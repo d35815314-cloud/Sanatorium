@@ -1,303 +1,432 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
-  DialogFooter,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Calendar } from "@/components/ui/calendar";
-import { Room, Booking } from "@/types/booking";
-import { CalendarIcon, User, Phone, MapPin, Clock } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Room, Booking, Guest, Organization } from "@/types/booking";
+import { User, Plus, Save, Bed, Building } from "lucide-react";
 
 interface BookingDialogProps {
+  selectedRoomId?: string;
   room?: Room | null;
   isOpen: boolean;
   onClose: () => void;
-  onBookRoom: (booking: Omit<Booking, "id" | "createdAt">) => void;
+  onBookRoom?: (bookingData: Omit<Booking, "id" | "createdAt">) => void;
+  rooms?: Room[];
+  guests?: Guest[];
+  prefilledGuest?: Guest | null;
+  organizations?: Organization[];
+  selectedDate?: Date | null;
 }
 
 export default function BookingDialog({
+  selectedRoomId: propSelectedRoomId,
   room = null,
   isOpen = false,
   onClose = () => {},
   onBookRoom = () => {},
+  rooms = [],
+  guests = [],
+  prefilledGuest = null,
+  organizations = [],
+  selectedDate = null,
 }: BookingDialogProps) {
-  const [guestName, setGuestName] = useState("");
-  const [guestPhone, setGuestPhone] = useState("");
-  const [guestAge, setGuestAge] = useState("");
-  const [guestAddress, setGuestAddress] = useState("");
-  const [checkInDate, setCheckInDate] = useState<Date | undefined>(new Date());
-  const [checkOutDate, setCheckOutDate] = useState<Date | undefined>();
-  const [showCheckInCalendar, setShowCheckInCalendar] = useState(false);
-  const [showCheckOutCalendar, setShowCheckOutCalendar] = useState(false);
+  console.debug("[SAFE-FIX] BookingDialog rendered for new booking", {
+    selectedRoomId: propSelectedRoomId,
+    hasRoom: !!room,
+  });
 
-  const handleSubmit = () => {
-    if (!room || !guestName || !guestPhone || !checkInDate || !checkOutDate) {
-      return;
-    }
+  const [selectedRoomId, setSelectedRoomId] = useState(
+    propSelectedRoomId || room?.id || "",
+  );
 
-    const duration = Math.ceil(
-      (checkOutDate.getTime() - checkInDate.getTime()) / (1000 * 60 * 60 * 24),
-    );
+  // Main effect to handle form initialization for new bookings
+  React.useEffect(() => {
+    if (!isOpen) return;
 
-    const booking: Omit<Booking, "id" | "createdAt"> = {
-      roomId: room.id,
-      guestName,
-      guestPhone,
-      guestAge: parseInt(guestAge) || 0,
-      guestAddress,
-      checkInDate,
-      checkOutDate,
-      duration,
-      status: "active",
-    };
-
-    onBookRoom(booking);
-    handleClose();
-  };
-
-  const handleClose = () => {
+    // Clear all form fields for new booking
     setGuestName("");
     setGuestPhone("");
     setGuestAge("");
     setGuestAddress("");
-    setCheckInDate(new Date());
-    setCheckOutDate(undefined);
-    setShowCheckInCalendar(false);
-    setShowCheckOutCalendar(false);
+    setGuestGender("male");
+    setGuestPassport("");
+    setVoucherNumber("");
+    setSelectedOrganizationId("none");
+
+    // Reset dates to default or use selected date from calendar
+    const defaultCheckInDate = selectedDate
+      ? selectedDate.toISOString().split("T")[0]
+      : new Date().toISOString().split("T")[0];
+    setCheckInDate(defaultCheckInDate);
+    const tomorrow = new Date(selectedDate || new Date());
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    setCheckOutDate(tomorrow.toISOString().split("T")[0]);
+
+    // Handle room selection - prioritize propSelectedRoomId
+    if (propSelectedRoomId) {
+      setSelectedRoomId(propSelectedRoomId);
+      const selectedRoom = rooms.find((r) => r.id === propSelectedRoomId);
+      setRoomSearchTerm(selectedRoom?.number || "");
+    } else if (room?.id) {
+      setSelectedRoomId(room.id);
+      setRoomSearchTerm(room.number);
+    } else {
+      setSelectedRoomId("");
+      setRoomSearchTerm("");
+    }
+
+    // Handle prefilled guest data
+    if (prefilledGuest) {
+      setGuestName(prefilledGuest.fullName);
+      setGuestPhone(prefilledGuest.phone);
+      setGuestAge(prefilledGuest.age.toString());
+      setGuestAddress(prefilledGuest.address);
+      setGuestGender(prefilledGuest.gender);
+      setGuestPassport(prefilledGuest.passportNumber);
+    }
+  }, [room, prefilledGuest, isOpen, propSelectedRoomId, rooms, selectedDate]);
+  const [guestName, setGuestName] = useState("");
+  const [guestPhone, setGuestPhone] = useState("");
+  const [guestAge, setGuestAge] = useState("");
+  const [guestAddress, setGuestAddress] = useState("");
+  const [guestGender, setGuestGender] = useState<"male" | "female">("male");
+  const [guestPassport, setGuestPassport] = useState("");
+
+  const [checkInDate, setCheckInDate] = useState(
+    new Date().toISOString().split("T")[0],
+  );
+  const [checkOutDate, setCheckOutDate] = useState(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().split("T")[0];
+  });
+
+  const [voucherNumber, setVoucherNumber] = useState("");
+  const [selectedOrganizationId, setSelectedOrganizationId] = useState("none");
+  const [roomSearchTerm, setRoomSearchTerm] = useState("");
+
+  // Don't render if dialog is closed
+  if (!isOpen) return null;
+
+  const handleCreateBooking = () => {
+    if (
+      !selectedRoomId ||
+      !guestName ||
+      !guestPhone ||
+      !guestAge ||
+      !guestAddress
+    ) {
+      alert("Пожалуйста, заполните все обязательные поля");
+      return;
+    }
+
+    const selectedRoom = rooms.find((r) => r.id === selectedRoomId);
+
+    // Check if room is blocked
+    if (selectedRoom?.blocked) {
+      alert(
+        `Номер ${selectedRoom.number} заблокирован. Бронирование невозможно.`,
+      );
+      return;
+    }
+
+    const checkIn = new Date(checkInDate);
+    const checkOut = new Date(checkOutDate);
+    const duration = Math.ceil(
+      (checkOut.getTime() - checkIn.getTime()) / (1000 * 60 * 60 * 24),
+    );
+
+    if (duration <= 0) {
+      alert("Дата выезда должна быть позже даты заезда");
+      return;
+    }
+
+    // Check if guest already exists by phone OR passport (if passport provided)
+    const existingGuest = guests.find(
+      (g) =>
+        g.phone === guestPhone ||
+        (guestPassport && g.passportNumber === guestPassport),
+    );
+
+    const guestId = existingGuest ? existingGuest.id : `guest-${Date.now()}`;
+
+    // Determine booking status based on check-in date
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const checkInDateOnly = new Date(checkIn);
+    checkInDateOnly.setHours(0, 0, 0, 0);
+
+    const bookingStatus = checkInDateOnly > today ? "confirmed" : "booked";
+
+    // Create booking
+    const bookingData: Omit<Booking, "id" | "createdAt"> = {
+      roomId: selectedRoomId,
+      guestId: guestId,
+      guestName,
+      guestPhone,
+      guestAge: parseInt(guestAge) || 0,
+      guestAddress,
+      guestGender,
+      guestPassport,
+      checkInDate: checkIn,
+      checkOutDate: checkOut,
+      duration,
+      status: bookingStatus,
+      services: [],
+      voucherNumber: voucherNumber || undefined,
+      organizationId:
+        selectedOrganizationId !== "none" ? selectedOrganizationId : undefined,
+    };
+
+    onBookRoom(bookingData);
     onClose();
   };
 
-  const getRoomTypeText = (type: Room["type"]) => {
-    switch (type) {
-      case "single":
-        return "Одноместный";
-      case "double":
-        return "Двухместный";
-      case "double_with_balcony":
-        return "Двухместный с балконом";
-      case "luxury":
-        return "Люкс";
-      default:
-        return type;
-    }
-  };
-
-  const getStatusText = (status: Room["status"]) => {
-    switch (status) {
-      case "available":
-        return "Свободен";
-      case "occupied":
-        return "Занят";
-      case "booked":
-        return "Забронирован";
-      case "reserved":
-        return "Резерв";
-      default:
-        return status;
-    }
-  };
-
-  if (!room) return null;
-
   return (
-    <Dialog open={isOpen} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto bg-white">
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto bg-white">
         <DialogHeader>
-          <DialogTitle>Бронирование номера {room.number}</DialogTitle>
+          <DialogTitle className="flex items-center gap-3">
+            <Plus className="w-6 h-6" />
+            Создать новое бронирование
+          </DialogTitle>
         </DialogHeader>
 
+        {/* New booking form */}
         <div className="space-y-6">
-          {/* Room Info */}
-          <div className="bg-gray-50 p-4 rounded-lg">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="font-semibold">Информация о номере</h3>
-              <Badge
-                variant={room.status === "available" ? "default" : "secondary"}
-              >
-                {getStatusText(room.status)}
-              </Badge>
-            </div>
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <span className="font-medium">Номер:</span> {room.number}
-              </div>
-              <div>
-                <span className="font-medium">Этаж:</span> {room.floor}
-              </div>
-              <div>
-                <span className="font-medium">Тип:</span>{" "}
-                {getRoomTypeText(room.type)}
-              </div>
-              <div>
-                <span className="font-medium">Позиция:</span>{" "}
-                {room.position.row + 1}-{room.position.col + 1}
-              </div>
-            </div>
-          </div>
-
-          {/* Guest Information */}
-          <div className="space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <User className="w-4 h-4" />
-              Данные гостя
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">ФИО</label>
-                <Input
-                  value={guestName}
-                  onChange={(e) => setGuestName(e.target.value)}
-                  placeholder="Введите полное имя"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 flex items-center gap-1">
-                  <Phone className="w-3 h-3" />
-                  Телефон
-                </label>
-                <Input
-                  value={guestPhone}
-                  onChange={(e) => setGuestPhone(e.target.value)}
-                  placeholder="+7 (999) 123-45-67"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Возраст
-                </label>
-                <Input
-                  type="number"
-                  value={guestAge}
-                  onChange={(e) => setGuestAge(e.target.value)}
-                  placeholder="Возраст"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 flex items-center gap-1">
-                  <MapPin className="w-3 h-3" />
-                  Адрес
-                </label>
-                <Input
-                  value={guestAddress}
-                  onChange={(e) => setGuestAddress(e.target.value)}
-                  placeholder="Адрес проживания"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Booking Dates */}
-          <div className="space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Clock className="w-4 h-4" />
-              Даты проживания
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Дата заселения
-                </label>
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                    onClick={() => setShowCheckInCalendar(!showCheckInCalendar)}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {checkInDate
-                      ? checkInDate.toLocaleDateString("ru-RU")
-                      : "Выберите дату"}
-                  </Button>
-                  {showCheckInCalendar && (
-                    <div className="absolute top-full left-0 z-50 mt-1 bg-white border rounded-lg shadow-lg">
-                      <Calendar
-                        mode="single"
-                        selected={checkInDate}
-                        onSelect={(date) => {
-                          setCheckInDate(date);
-                          setShowCheckInCalendar(false);
-                        }}
-                        disabled={(date) => date < new Date()}
-                      />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Room Selection */}
+            <Card className="bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Bed className="w-5 h-5" />
+                  Выбор номера
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="room-search">Поиск номера *</Label>
+                  <Input
+                    id="room-search"
+                    placeholder="Введите номер комнаты..."
+                    value={roomSearchTerm}
+                    onChange={(e) => setRoomSearchTerm(e.target.value)}
+                  />
+                  {(roomSearchTerm || !selectedRoomId) && (
+                    <div className="mt-2 max-h-40 overflow-y-auto border rounded-md">
+                      {rooms
+                        .filter(
+                          (r) =>
+                            !r.blocked &&
+                            (roomSearchTerm === "" ||
+                              r.number
+                                .toLowerCase()
+                                .includes(roomSearchTerm.toLowerCase())),
+                        )
+                        .slice(0, 20)
+                        .map((room) => (
+                          <div
+                            key={room.id}
+                            className={`p-2 cursor-pointer hover:bg-gray-100 ${
+                              selectedRoomId === room.id ? "bg-blue-100" : ""
+                            }`}
+                            onClick={() => {
+                              setSelectedRoomId(room.id);
+                              setRoomSearchTerm(room.number);
+                            }}
+                          >
+                            Номер {room.number} -{" "}
+                            {room.type === "single"
+                              ? "Одноместный"
+                              : room.type === "double"
+                                ? "Двухместный"
+                                : room.type === "double_with_balcony"
+                                  ? "С балконом"
+                                  : "Люкс"}
+                          </div>
+                        ))}
                     </div>
                   )}
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-1">
-                  Дата выселения
-                </label>
-                <div className="relative">
-                  <Button
-                    variant="outline"
-                    className="w-full justify-start text-left font-normal"
-                    onClick={() =>
-                      setShowCheckOutCalendar(!showCheckOutCalendar)
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="checkin-date">Дата заезда *</Label>
+                    <Input
+                      id="checkin-date"
+                      type="date"
+                      value={checkInDate}
+                      onChange={(e) => setCheckInDate(e.target.value)}
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="checkout-date">Дата выезда *</Label>
+                    <Input
+                      id="checkout-date"
+                      type="date"
+                      value={checkOutDate}
+                      onChange={(e) => setCheckOutDate(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <Label htmlFor="organization">Организация</Label>
+                    <Select
+                      value={selectedOrganizationId}
+                      onValueChange={setSelectedOrganizationId}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Выберите организацию (необязательно)" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Без организации</SelectItem>
+                        {organizations.map((org) => (
+                          <SelectItem key={org.id} value={org.id}>
+                            <div className="flex items-center gap-2">
+                              <Building className="w-4 h-4" />
+                              {org.officialName}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label htmlFor="voucher">Номер путевки</Label>
+                    <Input
+                      id="voucher"
+                      value={voucherNumber}
+                      onChange={(e) => setVoucherNumber(e.target.value)}
+                      placeholder={
+                        selectedOrganizationId !== "none"
+                          ? "Введите номер путевки"
+                          : "Сначала выберите организацию"
+                      }
+                      disabled={selectedOrganizationId === "none"}
+                    />
+                    {selectedOrganizationId !== "none" && (
+                      <p className="text-xs text-gray-500 mt-1">
+                        Путевка будет привязана к выбранной организации
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Guest Information */}
+            <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5" />
+                  Информация о госте
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <Label htmlFor="guest-name">ФИО *</Label>
+                  <Input
+                    id="guest-name"
+                    value={guestName}
+                    onChange={(e) => setGuestName(e.target.value)}
+                    placeholder="Фамилия Имя Отчество"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="guest-phone">Телефон *</Label>
+                    <Input
+                      id="guest-phone"
+                      value={guestPhone}
+                      onChange={(e) => setGuestPhone(e.target.value)}
+                      placeholder="+(373) 123-45-67"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="guest-age">Возраст *</Label>
+                    <Input
+                      id="guest-age"
+                      type="number"
+                      value={guestAge}
+                      onChange={(e) => setGuestAge(e.target.value)}
+                      placeholder="25"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <Label htmlFor="guest-address">Адрес *</Label>
+                  <Textarea
+                    id="guest-address"
+                    value={guestAddress}
+                    onChange={(e) => setGuestAddress(e.target.value)}
+                    placeholder="Полный адрес проживания"
+                    rows={2}
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="guest-passport">Паспортные данные</Label>
+                  <Input
+                    id="guest-passport"
+                    value={guestPassport}
+                    onChange={(e) => setGuestPassport(e.target.value)}
+                    placeholder="Серия и номер паспорта (необязательно)"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="guest-gender">Пол *</Label>
+                  <Select
+                    value={guestGender}
+                    onValueChange={(value: "male" | "female") =>
+                      setGuestGender(value)
                     }
                   >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {checkOutDate
-                      ? checkOutDate.toLocaleDateString("ru-RU")
-                      : "Выберите дату"}
-                  </Button>
-                  {showCheckOutCalendar && (
-                    <div className="absolute top-full left-0 z-50 mt-1 bg-white border rounded-lg shadow-lg">
-                      <Calendar
-                        mode="single"
-                        selected={checkOutDate}
-                        onSelect={(date) => {
-                          setCheckOutDate(date);
-                          setShowCheckOutCalendar(false);
-                        }}
-                        disabled={(date) => !checkInDate || date <= checkInDate}
-                      />
-                    </div>
-                  )}
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Мужской</SelectItem>
+                      <SelectItem value="female">Женский</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-              </div>
-            </div>
+              </CardContent>
+            </Card>
+          </div>
 
-            {checkInDate && checkOutDate && (
-              <div className="text-sm text-gray-600">
-                Срок проживания:{" "}
-                {Math.ceil(
-                  (checkOutDate.getTime() - checkInDate.getTime()) /
-                    (1000 * 60 * 60 * 24),
-                )}{" "}
-                дней
-              </div>
-            )}
+          <div className="flex justify-between pt-4">
+            <Button variant="outline" onClick={onClose}>
+              Отмена
+            </Button>
+            <div className="flex gap-3">
+              <Button onClick={handleCreateBooking}>
+                <Save className="w-4 h-4 mr-2" />
+                Создать бронирование
+              </Button>
+            </div>
           </div>
         </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
-            Отмена
-          </Button>
-          <Button
-            onClick={handleSubmit}
-            disabled={
-              !guestName ||
-              !guestPhone ||
-              !checkInDate ||
-              !checkOutDate ||
-              room.status !== "available"
-            }
-          >
-            Забронировать
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
