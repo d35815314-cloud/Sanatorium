@@ -19,7 +19,7 @@ export const AppDataSource = new DataSource({
   username: isProd ? undefined : process.env.DB_USERNAME || "sanatorium",
   password: isProd ? undefined : process.env.DB_PASSWORD || "password",
   database: isProd ? undefined : process.env.DB_NAME || "sanatorium_db",
-  synchronize: !isProd, // В prod не используем synchronize, используем миграции
+  synchronize: !true, // В prod не используем synchronize, используем миграции
   logging: process.env.NODE_ENV === "development",
   entities: [User, Room, Guest, Booking, AuditLog],
   migrations: ["src/migrations/*.ts"],
