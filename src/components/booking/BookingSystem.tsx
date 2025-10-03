@@ -72,19 +72,99 @@ export default function BookingSystem() {
 
   const [isGuestCardOpen, setIsGuestCardOpen] = useState(false);
   const [selectedGuest, setSelectedGuest] = useState<Guest | null>(null);
-  const [bookings, setBookings] = useState<Booking[]>([]);
-  const [guests, setGuests] = useState<Guest[]>([]);
-  const [organizations, setOrganizations] = useState<Organization[]>([]);
+  const [bookings, setBookings] = useState<Booking[]>(() => {
+    const saved = localStorage.getItem("sanatorium_bookings");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((b: any) => ({
+          ...b,
+          checkInDate: new Date(b.checkInDate),
+          checkOutDate: new Date(b.checkOutDate),
+          createdAt: new Date(b.createdAt),
+          actualCheckInAt: b.actualCheckInAt
+            ? new Date(b.actualCheckInAt)
+            : undefined,
+          actualCheckOutAt: b.actualCheckOutAt
+            ? new Date(b.actualCheckOutAt)
+            : undefined,
+        }));
+      } catch (e) {
+        console.error("Error loading bookings:", e);
+        return [];
+      }
+    }
+    return [];
+  });
+  const [guests, setGuests] = useState<Guest[]>(() => {
+    const saved = localStorage.getItem("sanatorium_guests");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((g: any) => ({
+          ...g,
+          dateOfBirth: new Date(g.dateOfBirth),
+          createdAt: new Date(g.createdAt),
+        }));
+      } catch (e) {
+        console.error("Error loading guests:", e);
+        return [];
+      }
+    }
+    return [];
+  });
+  const [organizations, setOrganizations] = useState<Organization[]>(() => {
+    const saved = localStorage.getItem("sanatorium_organizations");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((o: any) => ({
+          ...o,
+          createdAt: new Date(o.createdAt),
+        }));
+      } catch (e) {
+        console.error("Error loading organizations:", e);
+        return [];
+      }
+    }
+    return [];
+  });
   const [searchTerm, setSearchTerm] = useState("");
   const [guestSearchTerm, setGuestSearchTerm] = useState("");
   const [organizationSearchTerm, setOrganizationSearchTerm] = useState("");
   const [bookingSearchTerm, setBookingSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
-  const [roomsData, setRoomsData] = useState(rooms);
+  const [roomsData, setRoomsData] = useState(() => {
+    const saved = localStorage.getItem("sanatorium_rooms");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((r: any) => ({
+          ...r,
+          blockedAt: r.blockedAt ? new Date(r.blockedAt) : undefined,
+        }));
+      } catch (e) {
+        console.error("Error loading rooms:", e);
+        return rooms;
+      }
+    }
+    return rooms;
+  });
   const [viewMode, setViewMode] = useState<"grid" | "calendar">("calendar");
   const [activeTab, setActiveTab] = useState("placement");
-  const [currentDate, setCurrentDate] = useState(new Date());
+  const [currentDate, setCurrentDate] = useState(() => {
+    const saved = localStorage.getItem("sanatorium_currentDate");
+    if (saved) {
+      try {
+        return new Date(saved);
+      } catch (e) {
+        console.error("Error loading current date:", e);
+        return new Date();
+      }
+    }
+    return new Date();
+  });
   const [auditHistory, setAuditHistory] = useState<
     { date: Date; bookings: Booking[]; rooms: Room[] }[]
   >([]);
@@ -122,65 +202,98 @@ export default function BookingSystem() {
     useState(false);
   const [isBackupDialogOpen, setIsBackupDialogOpen] = useState(false);
   const [isAuditLogDialogOpen, setIsAuditLogDialogOpen] = useState(false);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [roomTypes, setRoomTypes] = useState<RoomType[]>([
-    {
-      id: "single",
-      name: "single",
-      displayName: "1 Местный стд.",
-      capacity: 1,
-      createdAt: new Date(),
-    },
-    {
-      id: "single_improved",
-      name: "single_improved",
-      displayName: "1 Местный ул. 1 кат. (душ)",
-      capacity: 1,
-      createdAt: new Date(),
-    },
-    {
-      id: "double",
-      name: "double",
-      displayName: "2х Местный",
-      capacity: 2,
-      createdAt: new Date(),
-    },
-    {
-      id: "double_improved",
-      name: "double_improved",
-      displayName: "2х Местный ул. 1 кат. (душ)",
-      capacity: 2,
-      createdAt: new Date(),
-    },
-    {
-      id: "family",
-      name: "family",
-      displayName: "Семейный",
-      capacity: 3,
-      createdAt: new Date(),
-    },
-    {
-      id: "family_improved",
-      name: "family_improved",
-      displayName: "Семейный ул. 1 кат. (душ)",
-      capacity: 3,
-      createdAt: new Date(),
-    },
-    {
-      id: "luxury_double",
-      name: "luxury_double",
-      displayName: "Люкс 2 Местный",
-      capacity: 2,
-      createdAt: new Date(),
-    },
-    {
-      id: "luxury",
-      name: "luxury",
-      displayName: "Люкс",
-      capacity: 4,
-      createdAt: new Date(),
-    },
-  ]);
+  const [auditLogs, setAuditLogs] = useState<AuditLog[]>(() => {
+    const saved = localStorage.getItem("sanatorium_auditLogs");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((log: any) => ({
+          ...log,
+          dateRun: new Date(log.dateRun),
+          createdAt: new Date(log.createdAt),
+        }));
+      } catch (e) {
+        console.error("Error loading audit logs:", e);
+        return [];
+      }
+    }
+    return [];
+  });
+  const [roomTypes, setRoomTypes] = useState<RoomType[]>(() => {
+    const saved = localStorage.getItem("sanatorium_roomTypes");
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        return parsed.map((rt: any) => ({
+          ...rt,
+          createdAt: new Date(rt.createdAt),
+        }));
+      } catch (e) {
+        console.error("Error loading room types:", e);
+      }
+    }
+    // Default room types
+    const defaultTypes = [
+      {
+        id: "single",
+        name: "single",
+        displayName: "1 Местный стд.",
+        capacity: 1,
+        createdAt: new Date(),
+      },
+      {
+        id: "single_improved",
+        name: "single_improved",
+        displayName: "1 Местный ул. 1 кат. (душ)",
+        capacity: 1,
+        createdAt: new Date(),
+      },
+      {
+        id: "double",
+        name: "double",
+        displayName: "2х Местный",
+        capacity: 2,
+        createdAt: new Date(),
+      },
+      {
+        id: "double_improved",
+        name: "double_improved",
+        displayName: "2х Местный ул. 1 кат. (душ)",
+        capacity: 2,
+        createdAt: new Date(),
+      },
+      {
+        id: "family",
+        name: "family",
+        displayName: "Семейный",
+        capacity: 3,
+        createdAt: new Date(),
+      },
+      {
+        id: "family_improved",
+        name: "family_improved",
+        displayName: "Семейный ул. 1 кат. (душ)",
+        capacity: 3,
+        createdAt: new Date(),
+      },
+      {
+        id: "luxury_double",
+        name: "luxury_double",
+        displayName: "Люкс 2 Местный",
+        capacity: 2,
+        createdAt: new Date(),
+      },
+      {
+        id: "luxury",
+        name: "luxury",
+        displayName: "Люкс",
+        capacity: 4,
+        createdAt: new Date(),
+      },
+    ];
+    localStorage.setItem("sanatorium_roomTypes", JSON.stringify(defaultTypes));
+    return defaultTypes;
+  });
   const [isAddRoomTypeDialogOpen, setIsAddRoomTypeDialogOpen] = useState(false);
 
   const handleRoomClick = (room: Room, clickedDate?: Date) => {
@@ -359,8 +472,8 @@ export default function BookingSystem() {
   };
 
   const handleBlockRoom = (roomId: string, reason: string) => {
-    setRoomsData((prevRooms) =>
-      prevRooms.map((room) =>
+    setRoomsData((prevRooms) => {
+      const updated = prevRooms.map((room) =>
         room.id === roomId
           ? {
               ...room,
@@ -369,16 +482,18 @@ export default function BookingSystem() {
               blockedAt: new Date(),
             }
           : room,
-      ),
-    );
+      );
+      localStorage.setItem("sanatorium_rooms", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleUnblockRoom = (roomId: string) => {
     console.debug("[SAFE-FIX] BookingSystem.handleUnblockRoom called", {
       roomId,
     });
-    setRoomsData((prevRooms) =>
-      prevRooms.map((room) =>
+    setRoomsData((prevRooms) => {
+      const updated = prevRooms.map((room) =>
         room.id === roomId
           ? {
               ...room,
@@ -387,8 +502,10 @@ export default function BookingSystem() {
               blockedAt: undefined,
             }
           : room,
-      ),
-    );
+      );
+      localStorage.setItem("sanatorium_rooms", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleNightAudit = () => {
@@ -447,6 +564,10 @@ export default function BookingSystem() {
 
     // Update bookings state
     setBookings(updatedBookings);
+    localStorage.setItem(
+      "sanatorium_bookings",
+      JSON.stringify(updatedBookings),
+    );
 
     // Create audit log entry
     const auditEntry: AuditLog = {
@@ -457,10 +578,15 @@ export default function BookingSystem() {
       details: `Ночной аудит за ${today.toLocaleDateString("ru-RU")}. Обработано ${processedBookings} броней. Завершено: ${completedBookings}. Подтверждено к заселению: ${confirmedToBooked}.`,
       createdAt: new Date(),
     };
-    setAuditLogs((prev) => [auditEntry, ...prev]);
+    setAuditLogs((prev) => {
+      const updated = [auditEntry, ...prev];
+      localStorage.setItem("sanatorium_auditLogs", JSON.stringify(updated));
+      return updated;
+    });
 
     // Move to next day - this will trigger re-render of calendar
     setCurrentDate(nextDay);
+    localStorage.setItem("sanatorium_currentDate", nextDay.toISOString());
 
     // Generate night audit report
     const auditData = {
@@ -694,7 +820,11 @@ export default function BookingSystem() {
         createdAt: new Date(),
       };
       console.debug("[SAFE-FIX] Creating new guest:", newGuest);
-      setGuests((prev) => [...prev, newGuest]);
+      setGuests((prev) => {
+        const updated = [...prev, newGuest];
+        localStorage.setItem("sanatorium_guests", JSON.stringify(updated));
+        return updated;
+      });
     } else {
       guestId = existingGuest.id;
       console.debug("[SAFE-FIX] Using existing guest:", existingGuest);
@@ -708,7 +838,11 @@ export default function BookingSystem() {
     };
 
     console.debug("[SAFE-FIX] Creating new booking:", newBooking);
-    setBookings((prev) => [...prev, newBooking]);
+    setBookings((prev) => {
+      const updated = [...prev, newBooking];
+      localStorage.setItem("sanatorium_bookings", JSON.stringify(updated));
+      return updated;
+    });
 
     // After creating booking, open the correct booking details
     setSelectedBookingId(bookingId);
@@ -747,7 +881,11 @@ export default function BookingSystem() {
     };
 
     console.debug("[SAFE-FIX] Creating additional guest:", newGuest);
-    setGuests((prev) => [...prev, newGuest]);
+    setGuests((prev) => {
+      const updated = [...prev, newGuest];
+      localStorage.setItem("sanatorium_guests", JSON.stringify(updated));
+      return updated;
+    });
 
     // Create new booking with unique ID
     const bookingId = `booking-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -759,27 +897,35 @@ export default function BookingSystem() {
     };
 
     console.debug("[SAFE-FIX] Creating additional booking:", newBooking);
-    setBookings((prev) => [...prev, newBooking]);
+    setBookings((prev) => {
+      const updated = [...prev, newBooking];
+      localStorage.setItem("sanatorium_bookings", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleUpdateBooking = (updatedBooking: Booking) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((booking) =>
+    setBookings((prevBookings) => {
+      const updated = prevBookings.map((booking) =>
         booking.id === updatedBooking.id ? updatedBooking : booking,
-      ),
-    );
+      );
+      localStorage.setItem("sanatorium_bookings", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleCheckOut = (bookingId: string) => {
     const booking = bookings.find((b) => b.id === bookingId);
     if (booking) {
-      setBookings((prevBookings) =>
-        prevBookings.map((b) =>
+      setBookings((prevBookings) => {
+        const updated = prevBookings.map((b) =>
           b.id === bookingId
             ? { ...b, status: "completed", actualCheckOutAt: new Date() }
             : b,
-        ),
-      );
+        );
+        localStorage.setItem("sanatorium_bookings", JSON.stringify(updated));
+        return updated;
+      });
       // Note: No longer updating room status directly - it's computed dynamically
     }
   };
@@ -793,8 +939,8 @@ export default function BookingSystem() {
     newCheckInDate: Date,
     newCheckOutDate: Date,
   ) => {
-    setBookings((prevBookings) =>
-      prevBookings.map((booking) => {
+    setBookings((prevBookings) => {
+      const updated = prevBookings.map((booking) => {
         if (booking.id === bookingId) {
           const duration = Math.ceil(
             (newCheckOutDate.getTime() - newCheckInDate.getTime()) /
@@ -808,8 +954,10 @@ export default function BookingSystem() {
           };
         }
         return booking;
-      }),
-    );
+      });
+      localStorage.setItem("sanatorium_bookings", JSON.stringify(updated));
+      return updated;
+    });
   };
 
   const handleTransferRoom = (bookingId: string, newRoomId: string) => {
@@ -817,24 +965,48 @@ export default function BookingSystem() {
     const newRoom = roomsData.find((r) => r.id === newRoomId);
 
     if (booking && newRoom) {
-      // Check if new room is available
+      // Check if new room has available capacity
       const newRoomStatus = computeRoomStatus(newRoom, currentDate, bookings);
-      if (newRoomStatus !== "free") {
+
+      // Count current occupancy in the new room
+      const currentOccupancy = bookings.filter(
+        (b) =>
+          b.roomId === newRoomId &&
+          b.id !== bookingId &&
+          (b.status === "checked_in" ||
+            b.status === "booked" ||
+            b.status === "confirmed") &&
+          b.checkInDate <= currentDate &&
+          b.checkOutDate >= currentDate,
+      ).length;
+
+      // Check if room is blocked
+      if (newRoomStatus === "blocked") {
         alert(
-          `Номер ${newRoom.number} недоступен для перевода. Статус: ${newRoomStatus}`,
+          `Номер ${newRoom.number} заблокирован и недоступен для перевода.`,
+        );
+        return;
+      }
+
+      // Check if there's available capacity
+      if (currentOccupancy >= newRoom.capacity) {
+        alert(
+          `Номер ${newRoom.number} полностью занят. Вместимость: ${newRoom.capacity}, занято: ${currentOccupancy}`,
         );
         return;
       }
 
       // Update booking with new room
-      setBookings((prevBookings) =>
-        prevBookings.map((b) =>
+      setBookings((prevBookings) => {
+        const updated = prevBookings.map((b) =>
           b.id === bookingId ? { ...b, roomId: newRoomId } : b,
-        ),
-      );
+        );
+        localStorage.setItem("sanatorium_bookings", JSON.stringify(updated));
+        return updated;
+      });
 
       alert(
-        `Гость ${booking.guestName} успешно переведен в номер ${newRoom.number}`,
+        `Гость ${booking.guestName} успешно переведен в номер ${newRoom.number}. Занято мест: ${currentOccupancy + 1}/${newRoom.capacity}`,
       );
     }
   };
@@ -865,13 +1037,15 @@ export default function BookingSystem() {
     const booking = bookings.find((b) => b.id === bookingId);
     if (booking) {
       // Update booking status to checked_in
-      setBookings((prevBookings) =>
-        prevBookings.map((b) =>
+      setBookings((prevBookings) => {
+        const updated = prevBookings.map((b) =>
           b.id === bookingId
             ? { ...b, status: "checked_in", actualCheckInAt: new Date() }
             : b,
-        ),
-      );
+        );
+        localStorage.setItem("sanatorium_bookings", JSON.stringify(updated));
+        return updated;
+      });
 
       // After check-in, immediately open BookingDetailsDialog with the updated booking
       const room = roomsData.find((r) => r.id === booking.roomId);
@@ -892,11 +1066,13 @@ export default function BookingSystem() {
   };
 
   const handleUpdateGuest = (updatedGuest: Guest) => {
-    setGuests((prevGuests) =>
-      prevGuests.map((guest) =>
+    setGuests((prevGuests) => {
+      const updated = prevGuests.map((guest) =>
         guest.id === updatedGuest.id ? updatedGuest : guest,
-      ),
-    );
+      );
+      localStorage.setItem("sanatorium_guests", JSON.stringify(updated));
+      return updated;
+    });
     // Also update the selected guest if it's the same one
     if (selectedGuest?.id === updatedGuest.id) {
       setSelectedGuest(updatedGuest);
@@ -918,7 +1094,9 @@ export default function BookingSystem() {
       id: guestId,
       createdAt: new Date(),
     };
-    setGuests([...guests, newGuest]);
+    const updated = [...guests, newGuest];
+    setGuests(updated);
+    localStorage.setItem("sanatorium_guests", JSON.stringify(updated));
     setIsNewGuestDialogOpen(false);
   };
 
@@ -931,7 +1109,9 @@ export default function BookingSystem() {
       id: orgId,
       createdAt: new Date(),
     };
-    setOrganizations([...organizations, newOrganization]);
+    const updated = [...organizations, newOrganization];
+    setOrganizations(updated);
+    localStorage.setItem("sanatorium_organizations", JSON.stringify(updated));
     setIsNewOrganizationDialogOpen(false);
   };
 
@@ -1084,6 +1264,11 @@ export default function BookingSystem() {
       (r) => r.building === "2" || r.building === "B",
     );
 
+    // Count checked-in guests
+    const checkedInGuests = bookings.filter(
+      (b) => b.status === "checked_in",
+    ).length;
+
     return {
       total,
       available: free,
@@ -1092,6 +1277,7 @@ export default function BookingSystem() {
       blocked,
       buildingA: buildingA.length,
       buildingB: buildingB.length,
+      checkedInGuests,
     };
   }, [roomsData, bookings, currentDate]);
 
@@ -1476,7 +1662,9 @@ export default function BookingSystem() {
         blocked: false,
       };
 
-      setRoomsData([...roomsData, newRoom]);
+      const updated = [...roomsData, newRoom];
+      setRoomsData(updated);
+      localStorage.setItem("sanatorium_rooms", JSON.stringify(updated));
       alert(`Номер ${formData.number} успешно добавлен!`);
       onClose();
     };
@@ -3072,6 +3260,12 @@ export default function BookingSystem() {
                   </div>
                   <div className="text-xs text-gray-600">Забронировано</div>
                 </div>
+                <div className="text-center">
+                  <div className="text-xl font-bold text-blue-600">
+                    {stats.checkedInGuests}
+                  </div>
+                  <div className="text-xs text-gray-600">Заселено гостей</div>
+                </div>
               </div>
 
               <div className="flex gap-2">
@@ -4453,16 +4647,21 @@ export default function BookingSystem() {
             setSelectedOrganization(null);
           }}
           onIssueVoucher={(organizationId, voucherNumber) => {
-            setOrganizations((prev) =>
-              prev.map((org) =>
+            setOrganizations((prev) => {
+              const updated = prev.map((org) =>
                 org.id === organizationId
                   ? {
                       ...org,
                       issuedVouchers: [...org.issuedVouchers, voucherNumber],
                     }
                   : org,
-              ),
-            );
+              );
+              localStorage.setItem(
+                "sanatorium_organizations",
+                JSON.stringify(updated),
+              );
+              return updated;
+            });
             alert(`Путевка ${voucherNumber} успешно выдана!`);
           }}
         />
@@ -4496,9 +4695,14 @@ export default function BookingSystem() {
           onOpenAddGuestDialog={handleOpenAddGuestDialog}
           onCheckIn={handleCheckIn}
           onCancelBooking={(bookingId) => {
-            setBookings((prevBookings) =>
-              prevBookings.filter((b) => b.id !== bookingId),
-            );
+            setBookings((prevBookings) => {
+              const updated = prevBookings.filter((b) => b.id !== bookingId);
+              localStorage.setItem(
+                "sanatorium_bookings",
+                JSON.stringify(updated),
+              );
+              return updated;
+            });
           }}
           rooms={roomsData}
           allBookings={bookings}
@@ -4597,7 +4801,14 @@ export default function BookingSystem() {
                   description: newType.description,
                   createdAt: new Date(),
                 };
-                setRoomTypes((prev) => [...prev, roomType]);
+                setRoomTypes((prev) => {
+                  const updated = [...prev, roomType];
+                  localStorage.setItem(
+                    "sanatorium_roomTypes",
+                    JSON.stringify(updated),
+                  );
+                  return updated;
+                });
                 setIsAddRoomTypeDialogOpen(false);
                 alert(`Тип номера "${newType.displayName}" успешно добавлен!`);
               }}
@@ -4642,11 +4853,16 @@ export default function BookingSystem() {
               <EnhancedRoomEditingDialog
                 rooms={roomsData}
                 onUpdateRoom={(updatedRoom) => {
-                  setRoomsData((prev) =>
-                    prev.map((r) =>
+                  setRoomsData((prev) => {
+                    const updated = prev.map((r) =>
                       r.id === updatedRoom.id ? updatedRoom : r,
-                    ),
-                  );
+                    );
+                    localStorage.setItem(
+                      "sanatorium_rooms",
+                      JSON.stringify(updated),
+                    );
+                    return updated;
+                  });
                 }}
                 onDeleteRoom={(roomId) => {
                   if (
@@ -4654,7 +4870,14 @@ export default function BookingSystem() {
                       "Вы уверены, что хотите удалить этот номер? Это действие нельзя отменить.",
                     )
                   ) {
-                    setRoomsData((prev) => prev.filter((r) => r.id !== roomId));
+                    setRoomsData((prev) => {
+                      const updated = prev.filter((r) => r.id !== roomId);
+                      localStorage.setItem(
+                        "sanatorium_rooms",
+                        JSON.stringify(updated),
+                      );
+                      return updated;
+                    });
                     alert("Номер успешно удален!");
                   }
                 }}
@@ -4664,7 +4887,14 @@ export default function BookingSystem() {
                     id: `room-${Date.now()}`,
                     position: { row: 0, col: 0 },
                   };
-                  setRoomsData((prev) => [...prev, roomWithId]);
+                  setRoomsData((prev) => {
+                    const updated = [...prev, roomWithId];
+                    localStorage.setItem(
+                      "sanatorium_rooms",
+                      JSON.stringify(updated),
+                    );
+                    return updated;
+                  });
                   alert(`Номер ${newRoom.number} успешно добавлен!`);
                 }}
                 onClose={() => setIsEditRoomDialogOpen(false)}

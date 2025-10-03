@@ -31,6 +31,7 @@ interface BookingDialogProps {
   prefilledGuest?: Guest | null;
   organizations?: Organization[];
   selectedDate?: Date | null;
+  bookings?: Booking[];
 }
 
 export default function BookingDialog({
@@ -44,6 +45,7 @@ export default function BookingDialog({
   prefilledGuest = null,
   organizations = [],
   selectedDate = null,
+  bookings = [],
 }: BookingDialogProps) {
   console.debug("[SAFE-FIX] BookingDialog rendered for new booking", {
     selectedRoomId: propSelectedRoomId,
@@ -156,6 +158,42 @@ export default function BookingDialog({
       return;
     }
 
+    // Normalize dates for comparison
+    const checkInDateOnly = new Date(checkIn);
+    checkInDateOnly.setHours(0, 0, 0, 0);
+    const checkOutDateOnly = new Date(checkOut);
+    checkOutDateOnly.setHours(0, 0, 0, 0);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Check if room has available capacity for the booking period
+    if (selectedRoom) {
+      // Count guests in this room during the booking period
+      const overlappingGuests = bookings.filter((b) => {
+        if (
+          b.roomId !== selectedRoomId ||
+          b.status === "cancelled" ||
+          b.status === "completed"
+        ) {
+          return false;
+        }
+        const bCheckIn = new Date(b.checkInDate);
+        bCheckIn.setHours(0, 0, 0, 0);
+        const bCheckOut = new Date(b.checkOutDate);
+        bCheckOut.setHours(0, 0, 0, 0);
+
+        // Check if booking periods overlap
+        return checkInDateOnly < bCheckOut && checkOutDateOnly > bCheckIn;
+      });
+
+      if (overlappingGuests.length >= selectedRoom.capacity) {
+        alert(
+          `Номер ${selectedRoom.number} полностью занят на выбранные даты (${overlappingGuests.length}/${selectedRoom.capacity}). Выберите другой номер или другие даты.`,
+        );
+        return;
+      }
+    }
+
     // Check if guest already exists by phone OR passport (if passport provided)
     const existingGuest = guests.find(
       (g) =>
@@ -165,12 +203,7 @@ export default function BookingDialog({
 
     const guestId = existingGuest ? existingGuest.id : `guest-${Date.now()}`;
 
-    // Determine booking status based on check-in date
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const checkInDateOnly = new Date(checkIn);
-    checkInDateOnly.setHours(0, 0, 0, 0);
-
+    // Determine booking status based on check-in date (reuse today variable from above)
     const bookingStatus = checkInDateOnly > today ? "confirmed" : "booked";
 
     // Create booking

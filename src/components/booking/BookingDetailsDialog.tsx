@@ -793,34 +793,77 @@ export default function BookingDetailsDialog({
             <CardContent>
               <div className="space-y-4">
                 <div>
+                  <label className="block text-sm font-medium mb-2">
+                    Введите номер комнаты
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="Например: 1101"
+                    value={selectedNewRoom}
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      // Find room by number
+                      const foundRoom = rooms.find(
+                        (r) => r.number === inputValue,
+                      );
+                      if (foundRoom) {
+                        setSelectedNewRoom(foundRoom.id);
+                      } else {
+                        setSelectedNewRoom(inputValue);
+                      }
+                    }}
+                    className="mb-3"
+                  />
+                </div>
+                <div>
                   <label className="block text-sm font-medium mb-1">
-                    Выберите новый номер
+                    Или выберите из списка всех номеров
                   </label>
                   <Select
                     value={selectedNewRoom}
                     onValueChange={setSelectedNewRoom}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Введите номер или выберите из списка" />
+                      <SelectValue placeholder="Выберите номер" />
                     </SelectTrigger>
-                    <SelectContent>
-                      {availableRooms.length > 0 ? (
-                        availableRooms.map((availableRoom) => (
-                          <SelectItem
-                            key={availableRoom.id}
-                            value={availableRoom.id}
-                          >
-                            Номер {availableRoom.number} -{" "}
-                            {getRoomTypeText(availableRoom.type)} (Этаж{" "}
-                            {availableRoom.floor}, Корпус{" "}
-                            {availableRoom.building})
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="" disabled>
-                          Нет доступных номеров
-                        </SelectItem>
-                      )}
+                    <SelectContent className="max-h-[300px]">
+                      {rooms
+                        .filter((r) => r.id !== room.id)
+                        .sort((a, b) => {
+                          if (a.building !== b.building) {
+                            return a.building.localeCompare(b.building);
+                          }
+                          if (a.floor !== b.floor) {
+                            return a.floor - b.floor;
+                          }
+                          return a.number.localeCompare(b.number);
+                        })
+                        .map((availableRoom) => {
+                          const roomStatus = computeRoomStatus(
+                            availableRoom,
+                            new Date(),
+                            allBookings,
+                          );
+                          const statusText =
+                            roomStatus === "free"
+                              ? "Свободен"
+                              : roomStatus === "occupied"
+                                ? "Занят"
+                                : roomStatus === "booked"
+                                  ? "Забронирован"
+                                  : "Заблокирован";
+                          return (
+                            <SelectItem
+                              key={availableRoom.id}
+                              value={availableRoom.id}
+                            >
+                              Номер {availableRoom.number} -{" "}
+                              {getRoomTypeText(availableRoom.type)} (Этаж{" "}
+                              {availableRoom.floor}, Корпус{" "}
+                              {availableRoom.building}) - {statusText}
+                            </SelectItem>
+                          );
+                        })}
                     </SelectContent>
                   </Select>
                 </div>

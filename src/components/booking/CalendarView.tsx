@@ -311,7 +311,7 @@ export default function CalendarView({
 
           {/* Room rows */}
           <div className="space-y-1">
-            {floorRooms.slice(0, 20).map((room) => {
+            {floorRooms.map((room) => {
               const roomBookings = getRoomBookings(room.id);
               const occupancyRate =
                 room.type === "single" || room.type === "single_improved"
