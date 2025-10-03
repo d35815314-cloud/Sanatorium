@@ -1,0 +1,12 @@
+[project]
+name = "sanatorium"
+
+[frontend]
+root = "."
+build = "npm install && npm run build"
+start = "npx serve -s dist"
+
+[backend]
+root = "backend"
+build = "npm install && npm run build"
+start = "npm run start"

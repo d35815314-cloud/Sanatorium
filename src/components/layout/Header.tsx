@@ -1,31 +1,9 @@
-import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Building2, LogOut, User, Settings } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { LogOut, User } from "lucide-react";
 
 export default function Header() {
   const { user, logout } = useAuth();
-
-  const getRoleBadgeVariant = (role: string) => {
-    switch (role) {
-      case "administrator":
-        return "destructive";
-      case "manager":
-        return "default";
-      case "reception":
-        return "secondary";
-      default:
-        return "outline";
-    }
-  };
 
   const getRoleText = (role: string) => {
     switch (role) {
@@ -41,75 +19,41 @@ export default function Header() {
   };
 
   return (
-    <header className="bg-white border-b border-gray-200 px-6 py-4">
-      <div className="flex items-center justify-between">
-        {/* Logo and Title */}
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-600 p-2 rounded-lg">
-            <Building2 className="w-6 h-6 text-white" />
-          </div>
+    <header className="bg-white border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-6 py-4">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-bold text-gray-900">
-              Санаторий &quot;Днестр&quot;
+              Санаторий "Днестр"
             </h1>
-            <p className="text-sm text-gray-600">Система управления</p>
+            <p className="text-sm text-gray-600">
+              Система управления санаторием
+            </p>
           </div>
-        </div>
 
-        {/* User Menu */}
-        {user && (
-          <div className="flex items-center gap-4">
-            {/* User Info */}
-            <div className="text-right">
-              <div className="text-sm font-medium text-gray-900">
-                {user.firstName} {user.lastName}
-              </div>
-              <div className="flex items-center gap-2">
-                <Badge
-                  variant={getRoleBadgeVariant(user.role)}
-                  className="text-xs"
-                >
-                  {getRoleText(user.role)}
-                </Badge>
-              </div>
-            </div>
-
-            {/* Dropdown Menu */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="relative h-8 w-8 rounded-full"
-                >
-                  <User className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-56" align="end" forceMount>
-                <DropdownMenuLabel className="font-normal">
-                  <div className="flex flex-col space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-xs leading-none text-muted-foreground">
-                      {user.email}
-                    </p>
+          {user && (
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2 text-sm">
+                <User className="w-4 h-4" />
+                <div>
+                  <div className="font-medium">
+                    {user.firstName} {user.lastName}
                   </div>
-                </DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem disabled>
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Настройки</span>
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={logout}>
-                  <LogOut className="mr-2 h-4 w-4" />
-                  <span>Выйти</span>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
-        )}
+                  <div className="text-gray-600">{getRoleText(user.role)}</div>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={logout}
+                className="flex items-center gap-2"
+              >
+                <LogOut className="w-4 h-4" />
+                Выйти
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );
